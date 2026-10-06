@@ -76,8 +76,8 @@ type ClientOptions struct {
 	DialKeepAlive time.Duration
 
 	// DialOptions is a list of dial options for the gRPC client (e.g., for interceptors).
-	// For example, pass grpc.WithBlock() to block until the underlying connection is up.
-	// Without this, Dial returns immediately and connecting the server happens in background.
+	// Connecting to the server happens in the background, so NewClient does not
+	// fail if the endpoints are unreachable.
 	DialOptions []grpc.DialOption
 
 	Username string

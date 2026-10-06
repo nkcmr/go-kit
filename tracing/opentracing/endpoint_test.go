@@ -76,7 +76,7 @@ func TestTraceEndpoint(t *testing.T) {
 
 	// ... and that the parent ID is set appropriately.
 	if want, have := parentContext.SpanID, endpointContext.SpanID; want != have {
-		t.Errorf("Want ParentID %q, have %q", want, have)
+		t.Errorf("Want ParentID %d, have %d", want, have)
 	}
 }
 

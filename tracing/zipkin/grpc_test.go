@@ -33,7 +33,7 @@ func TestGRPCClientTrace(t *testing.T) {
 	clientTracer := kitzipkin.GRPCClientTrace(tr)
 
 	cc, err := grpc.Dial(
-		"",
+		"localhost:0",
 		grpc.WithUnaryInterceptor(unaryInterceptor),
 		grpc.WithInsecure(),
 	)

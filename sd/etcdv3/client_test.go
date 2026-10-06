@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"google.golang.org/grpc"
 )
 
 const (
@@ -62,19 +60,5 @@ func TestClientOptions(t *testing.T) {
 	)
 	if err == nil {
 		t.Errorf("expected error: %v", err)
-	}
-
-	client, err = NewClient(
-		context.Background(),
-		[]string{irrelevantEndpoint},
-		ClientOptions{
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
-		},
-	)
-	if err == nil {
-		t.Errorf("expected connection should fail")
-	}
-	if client != nil {
-		t.Errorf("expected client to be nil on failure")
 	}
 }

@@ -119,7 +119,7 @@ type bufWriter struct {
 
 func (w *bufWriter) Write(bp influxdb.BatchPoints) error {
 	for _, p := range bp.Points() {
-		fmt.Fprintf(&w.buf, p.String()+"\n")
+		fmt.Fprintln(&w.buf, p.String())
 	}
 	return nil
 }

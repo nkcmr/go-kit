@@ -53,7 +53,7 @@ func TestTraceGRPCRequestRoundtrip(t *testing.T) {
 
 	// Check that the parent/child relationship is as expected for the joined span.
 	if want, have := beforeContext.SpanID, joinedSpan.ParentID; want != have {
-		t.Errorf("Want ParentID %q, have %q", want, have)
+		t.Errorf("Want ParentID %d, have %d", want, have)
 	}
 	if want, have := "joined", joinedSpan.OperationName; want != have {
 		t.Errorf("Want %q, have %q", want, have)

@@ -80,7 +80,7 @@ type tbWriter struct {
 }
 
 func (w *tbWriter) Write(b []byte) (n int, err error) {
-	w.tb.Logf(string(b))
+	w.tb.Logf("%s", b)
 	w.sb.Write(b)
 	return len(b), nil
 }
