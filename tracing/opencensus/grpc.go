@@ -61,10 +61,7 @@ func GRPCClientTrace(options ...TracerOption) kitgrpc.ClientOption {
 		},
 	)
 
-	return func(c *kitgrpc.Client) {
-		clientBefore(c)
-		clientFinalizer(c)
-	}
+	return kitgrpc.CombineClientOptions(clientBefore, clientFinalizer)
 }
 
 // GRPCServerTrace enables OpenCensus tracing of a Go kit gRPC transport server.
@@ -142,8 +139,5 @@ func GRPCServerTrace(options ...TracerOption) kitgrpc.ServerOption {
 		},
 	)
 
-	return func(s *kitgrpc.Server) {
-		serverBefore(s)
-		serverFinalizer(s)
-	}
+	return kitgrpc.CombineServerOptions(serverBefore, serverFinalizer)
 }

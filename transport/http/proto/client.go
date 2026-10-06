@@ -15,14 +15,14 @@ import (
 // If the request implements Headerer, the provided headers will be applied
 // to the request. If the given request does not implement proto.Message, an error will
 // be returned.
-func EncodeProtoRequest(_ context.Context, r *http.Request, preq interface{}) error {
+func EncodeProtoRequest[Request any](_ context.Context, r *http.Request, preq Request) error {
 	r.Header.Set("Content-Type", "application/x-protobuf")
-	if headerer, ok := preq.(httptransport.Headerer); ok {
+	if headerer, ok := any(preq).(httptransport.Headerer); ok {
 		for k := range headerer.Headers() {
 			r.Header.Set(k, headerer.Headers().Get(k))
 		}
 	}
-	req, ok := preq.(proto.Message)
+	req, ok := any(preq).(proto.Message)
 	if !ok {
 		return errors.New("response does not implement proto.Message")
 	}

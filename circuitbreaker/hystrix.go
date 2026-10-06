@@ -16,7 +16,7 @@ import (
 // See https://godoc.org/github.com/afex/hystrix-go/hystrix for more
 // information.
 func Hystrix(commandName string) endpoint.Middleware {
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			var resp interface{}
 			if err := hystrix.Do(commandName, func() (err error) {

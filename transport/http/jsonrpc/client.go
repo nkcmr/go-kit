@@ -13,9 +13,18 @@ import (
 	httptransport "code.nkcmr.net/go-kit/transport/http"
 )
 
+type clientOptions struct {
+	client         httptransport.HTTPClient
+	before         []httptransport.RequestFunc
+	after          []httptransport.ClientResponseFunc
+	finalizer      httptransport.ClientFinalizerFunc
+	requestID      RequestIDGenerator
+	bufferedStream bool
+}
+
 // Client wraps a JSON RPC method and provides a method that implements endpoint.Endpoint.
-type Client struct {
-	client httptransport.HTTPClient
+type Client[Req, Resp any] struct {
+	clientOptions
 
 	// JSON RPC endpoint URL
 	tgt *url.URL
@@ -23,13 +32,8 @@ type Client struct {
 	// JSON RPC method name.
 	method string
 
-	enc            EncodeRequestFunc
-	dec            DecodeResponseFunc
-	before         []httptransport.RequestFunc
-	after          []httptransport.ClientResponseFunc
-	finalizer      httptransport.ClientFinalizerFunc
-	requestID      RequestIDGenerator
-	bufferedStream bool
+	enc EncodeRequestFunc[Req]
+	dec DecodeResponseFunc[Resp]
 }
 
 type clientRequest struct {
@@ -39,86 +43,97 @@ type clientRequest struct {
 	ID      interface{}     `json:"id"`
 }
 
-// NewClient constructs a usable Client for a single remote method.
-func NewClient(
+// NewClient constructs a usable Client for a single remote method. If enc is
+// nil, DefaultRequestEncoder is used. If dec is nil, DefaultResponseDecoder is
+// used.
+func NewClient[Req, Resp any](
 	tgt *url.URL,
 	method string,
+	enc EncodeRequestFunc[Req],
+	dec DecodeResponseFunc[Resp],
 	options ...ClientOption,
-) *Client {
-	c := &Client{
-		client:         http.DefaultClient,
-		method:         method,
-		tgt:            tgt,
-		enc:            DefaultRequestEncoder,
-		dec:            DefaultResponseDecoder,
-		before:         []httptransport.RequestFunc{},
-		after:          []httptransport.ClientResponseFunc{},
-		requestID:      NewAutoIncrementID(0),
-		bufferedStream: false,
+) *Client[Req, Resp] {
+	if enc == nil {
+		enc = DefaultRequestEncoder[Req]
+	}
+	if dec == nil {
+		dec = DefaultResponseDecoder[Resp]
+	}
+	c := &Client[Req, Resp]{
+		clientOptions: clientOptions{
+			client:         http.DefaultClient,
+			before:         []httptransport.RequestFunc{},
+			after:          []httptransport.ClientResponseFunc{},
+			requestID:      NewAutoIncrementID(0),
+			bufferedStream: false,
+		},
+		method: method,
+		tgt:    tgt,
+		enc:    enc,
+		dec:    dec,
 	}
 	for _, option := range options {
-		option(c)
+		option(&c.clientOptions)
 	}
 	return c
 }
 
 // DefaultRequestEncoder marshals the given request to JSON.
-func DefaultRequestEncoder(_ context.Context, req interface{}) (json.RawMessage, error) {
+func DefaultRequestEncoder[Req any](_ context.Context, req Req) (json.RawMessage, error) {
 	return json.Marshal(req)
 }
 
-// DefaultResponseDecoder unmarshals the result to interface{}, or returns an
+// DefaultResponseDecoder unmarshals the result to a Resp, or returns an
 // error, if found.
-func DefaultResponseDecoder(_ context.Context, res Response) (interface{}, error) {
+func DefaultResponseDecoder[Resp any](_ context.Context, res Response) (Resp, error) {
+	var result Resp
 	if res.Error != nil {
-		return nil, *res.Error
+		return result, *res.Error
 	}
-	var result interface{}
 	err := json.Unmarshal(res.Result, &result)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	return result, nil
 }
 
 // ClientOption sets an optional parameter for clients.
-type ClientOption func(*Client)
+type ClientOption func(*clientOptions)
+
+// CombineClientOptions returns a ClientOption that applies each of the given
+// options in order. It's useful for packages that provide several related
+// options as one.
+func CombineClientOptions(options ...ClientOption) ClientOption {
+	return func(c *clientOptions) {
+		for _, option := range options {
+			option(c)
+		}
+	}
+}
 
 // SetClient sets the underlying HTTP client used for requests.
 // By default, http.DefaultClient is used.
 func SetClient(client httptransport.HTTPClient) ClientOption {
-	return func(c *Client) { c.client = client }
+	return func(c *clientOptions) { c.client = client }
 }
 
 // ClientBefore sets the RequestFuncs that are applied to the outgoing HTTP
 // request before it's invoked.
 func ClientBefore(before ...httptransport.RequestFunc) ClientOption {
-	return func(c *Client) { c.before = append(c.before, before...) }
+	return func(c *clientOptions) { c.before = append(c.before, before...) }
 }
 
 // ClientAfter sets the ClientResponseFuncs applied to the server's HTTP
 // response prior to it being decoded. This is useful for obtaining anything
 // from the response and adding onto the context prior to decoding.
 func ClientAfter(after ...httptransport.ClientResponseFunc) ClientOption {
-	return func(c *Client) { c.after = append(c.after, after...) }
+	return func(c *clientOptions) { c.after = append(c.after, after...) }
 }
 
 // ClientFinalizer is executed at the end of every HTTP request.
 // By default, no finalizer is registered.
 func ClientFinalizer(f httptransport.ClientFinalizerFunc) ClientOption {
-	return func(c *Client) { c.finalizer = f }
-}
-
-// ClientRequestEncoder sets the func used to encode the request params to JSON.
-// If not set, DefaultRequestEncoder is used.
-func ClientRequestEncoder(enc EncodeRequestFunc) ClientOption {
-	return func(c *Client) { c.enc = enc }
-}
-
-// ClientResponseDecoder sets the func used to decode the response params from
-// JSON. If not set, DefaultResponseDecoder is used.
-func ClientResponseDecoder(dec DecodeResponseFunc) ClientOption {
-	return func(c *Client) { c.dec = dec }
+	return func(c *clientOptions) { c.finalizer = f }
 }
 
 // RequestIDGenerator returns an ID for the request.
@@ -130,18 +145,19 @@ type RequestIDGenerator interface {
 // for the request.
 // By default, AutoIncrementRequestID is used.
 func ClientRequestIDGenerator(g RequestIDGenerator) ClientOption {
-	return func(c *Client) { c.requestID = g }
+	return func(c *clientOptions) { c.requestID = g }
 }
 
 // BufferedStream sets whether the Response.Body is left open, allowing it
 // to be read from later. Useful for transporting a file as a buffered stream.
 func BufferedStream(buffered bool) ClientOption {
-	return func(c *Client) { c.bufferedStream = buffered }
+	return func(c *clientOptions) { c.bufferedStream = buffered }
 }
 
 // Endpoint returns a usable endpoint that invokes the remote endpoint.
-func (c Client) Endpoint() endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
+func (c Client[Req, Resp]) Endpoint() endpoint.Endpoint[Req, Resp] {
+	return func(ctx context.Context, request Req) (Resp, error) {
+		var zero Resp
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
@@ -163,7 +179,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 
 		var params json.RawMessage
 		if params, err = c.enc(ctx, request); err != nil {
-			return nil, err
+			return zero, err
 		}
 		rpcReq := clientRequest{
 			JSONRPC: Version,
@@ -174,7 +190,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 
 		req, err := http.NewRequest("POST", c.tgt.String(), nil)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
@@ -182,7 +198,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 		req.Body = ioutil.NopCloser(&b)
 		err = json.NewEncoder(&b).Encode(rpcReq)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		for _, f := range c.before {
@@ -191,7 +207,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 
 		resp, err = c.client.Do(req.WithContext(ctx))
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		if !c.bufferedStream {
@@ -206,12 +222,12 @@ func (c Client) Endpoint() endpoint.Endpoint {
 		var rpcRes Response
 		err = json.NewDecoder(resp.Body).Decode(&rpcRes)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		response, err := c.dec(ctx, rpcRes)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		return response, nil

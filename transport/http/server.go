@@ -10,11 +10,7 @@ import (
 	"github.com/go-kit/log"
 )
 
-// Server wraps an endpoint and implements http.Handler.
-type Server struct {
-	e            endpoint.Endpoint
-	dec          DecodeRequestFunc
-	enc          EncodeResponseFunc
+type serverOptions struct {
 	before       []RequestFunc
 	after        []ServerResponseFunc
 	errorEncoder ErrorEncoder
@@ -22,40 +18,61 @@ type Server struct {
 	errorHandler transport.ErrorHandler
 }
 
+// Server wraps an endpoint and implements http.Handler.
+type Server[Request, Response any] struct {
+	serverOptions
+	e   endpoint.Endpoint[Request, Response]
+	dec DecodeRequestFunc[Request]
+	enc EncodeResponseFunc[Response]
+}
+
 // NewServer constructs a new server, which implements http.Handler and wraps
 // the provided endpoint.
-func NewServer(
-	e endpoint.Endpoint,
-	dec DecodeRequestFunc,
-	enc EncodeResponseFunc,
+func NewServer[Request, Response any](
+	e endpoint.Endpoint[Request, Response],
+	dec DecodeRequestFunc[Request],
+	enc EncodeResponseFunc[Response],
 	options ...ServerOption,
-) *Server {
-	s := &Server{
-		e:            e,
-		dec:          dec,
-		enc:          enc,
-		errorEncoder: DefaultErrorEncoder,
-		errorHandler: transport.NewLogErrorHandler(log.NewNopLogger()),
+) *Server[Request, Response] {
+	s := &Server[Request, Response]{
+		serverOptions: serverOptions{
+			errorEncoder: DefaultErrorEncoder,
+			errorHandler: transport.NewLogErrorHandler(log.NewNopLogger()),
+		},
+		e:   e,
+		dec: dec,
+		enc: enc,
 	}
 	for _, option := range options {
-		option(s)
+		option(&s.serverOptions)
 	}
 	return s
 }
 
 // ServerOption sets an optional parameter for servers.
-type ServerOption func(*Server)
+type ServerOption func(*serverOptions)
+
+// CombineServerOptions returns a ServerOption that applies each of the given
+// options in order. It's useful for packages that provide several related
+// options as one.
+func CombineServerOptions(options ...ServerOption) ServerOption {
+	return func(s *serverOptions) {
+		for _, option := range options {
+			option(s)
+		}
+	}
+}
 
 // ServerBefore functions are executed on the HTTP request object before the
 // request is decoded.
 func ServerBefore(before ...RequestFunc) ServerOption {
-	return func(s *Server) { s.before = append(s.before, before...) }
+	return func(s *serverOptions) { s.before = append(s.before, before...) }
 }
 
 // ServerAfter functions are executed on the HTTP response writer after the
 // endpoint is invoked, but before anything is written to the client.
 func ServerAfter(after ...ServerResponseFunc) ServerOption {
-	return func(s *Server) { s.after = append(s.after, after...) }
+	return func(s *serverOptions) { s.after = append(s.after, after...) }
 }
 
 // ServerErrorEncoder is used to encode errors to the http.ResponseWriter
@@ -63,7 +80,7 @@ func ServerAfter(after ...ServerResponseFunc) ServerOption {
 // use this to provide custom error formatting and response codes. By default,
 // errors will be written with the DefaultErrorEncoder.
 func ServerErrorEncoder(ee ErrorEncoder) ServerOption {
-	return func(s *Server) { s.errorEncoder = ee }
+	return func(s *serverOptions) { s.errorEncoder = ee }
 }
 
 // ServerErrorLogger is used to log non-terminal errors. By default, no errors
@@ -73,7 +90,7 @@ func ServerErrorEncoder(ee ErrorEncoder) ServerOption {
 // the context.
 // Deprecated: Use ServerErrorHandler instead.
 func ServerErrorLogger(logger log.Logger) ServerOption {
-	return func(s *Server) { s.errorHandler = transport.NewLogErrorHandler(logger) }
+	return func(s *serverOptions) { s.errorHandler = transport.NewLogErrorHandler(logger) }
 }
 
 // ServerErrorHandler is used to handle non-terminal errors. By default, non-terminal errors
@@ -82,17 +99,17 @@ func ServerErrorLogger(logger log.Logger) ServerOption {
 // custom ServerErrorEncoder or ServerFinalizer, both of which have access to
 // the context.
 func ServerErrorHandler(errorHandler transport.ErrorHandler) ServerOption {
-	return func(s *Server) { s.errorHandler = errorHandler }
+	return func(s *serverOptions) { s.errorHandler = errorHandler }
 }
 
 // ServerFinalizer is executed at the end of every HTTP request.
 // By default, no finalizer is registered.
 func ServerFinalizer(f ...ServerFinalizerFunc) ServerOption {
-	return func(s *Server) { s.finalizer = append(s.finalizer, f...) }
+	return func(s *serverOptions) { s.finalizer = append(s.finalizer, f...) }
 }
 
 // ServeHTTP implements http.Handler.
-func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s Server[Request, Response]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if len(s.finalizer) > 0 {
@@ -160,9 +177,9 @@ func NopRequestDecoder(ctx context.Context, r *http.Request) (interface{}, error
 // a sensible default. If the response implements Headerer, the provided headers
 // will be applied to the response. If the response implements StatusCoder, the
 // provided StatusCode will be used instead of 200.
-func EncodeJSONResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+func EncodeJSONResponse[Response any](_ context.Context, w http.ResponseWriter, response Response) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if headerer, ok := response.(Headerer); ok {
+	if headerer, ok := any(response).(Headerer); ok {
 		for k, values := range headerer.Headers() {
 			for _, v := range values {
 				w.Header().Add(k, v)
@@ -170,7 +187,7 @@ func EncodeJSONResponse(_ context.Context, w http.ResponseWriter, response inter
 		}
 	}
 	code := http.StatusOK
-	if sc, ok := response.(StatusCoder); ok {
+	if sc, ok := any(response).(StatusCoder); ok {
 		code = sc.StatusCode()
 	}
 	w.WriteHeader(code)

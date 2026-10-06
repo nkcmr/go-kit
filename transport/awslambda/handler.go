@@ -9,10 +9,14 @@ import (
 )
 
 // Handler wraps an endpoint.
-type Handler struct {
-	e            endpoint.Endpoint
-	dec          DecodeRequestFunc
-	enc          EncodeResponseFunc
+type Handler[Request, Response any] struct {
+	handlerOptions
+	e   endpoint.Endpoint[Request, Response]
+	dec DecodeRequestFunc[Request]
+	enc EncodeResponseFunc[Response]
+}
+
+type handlerOptions struct {
 	before       []HandlerRequestFunc
 	after        []HandlerResponseFunc
 	errorEncoder ErrorEncoder
@@ -22,62 +26,64 @@ type Handler struct {
 
 // NewHandler constructs a new handler, which implements
 // the AWS lambda.Handler interface.
-func NewHandler(
-	e endpoint.Endpoint,
-	dec DecodeRequestFunc,
-	enc EncodeResponseFunc,
+func NewHandler[Request, Response any](
+	e endpoint.Endpoint[Request, Response],
+	dec DecodeRequestFunc[Request],
+	enc EncodeResponseFunc[Response],
 	options ...HandlerOption,
-) *Handler {
-	h := &Handler{
-		e:            e,
-		dec:          dec,
-		enc:          enc,
-		errorEncoder: DefaultErrorEncoder,
-		errorHandler: transport.NewLogErrorHandler(log.NewNopLogger()),
+) *Handler[Request, Response] {
+	h := &Handler[Request, Response]{
+		handlerOptions: handlerOptions{
+			errorEncoder: DefaultErrorEncoder,
+			errorHandler: transport.NewLogErrorHandler(log.NewNopLogger()),
+		},
+		e:   e,
+		dec: dec,
+		enc: enc,
 	}
 	for _, option := range options {
-		option(h)
+		option(&h.handlerOptions)
 	}
 	return h
 }
 
 // HandlerOption sets an optional parameter for handlers.
-type HandlerOption func(*Handler)
+type HandlerOption func(*handlerOptions)
 
 // HandlerBefore functions are executed on the payload byte,
 // before the request is decoded.
 func HandlerBefore(before ...HandlerRequestFunc) HandlerOption {
-	return func(h *Handler) { h.before = append(h.before, before...) }
+	return func(h *handlerOptions) { h.before = append(h.before, before...) }
 }
 
 // HandlerAfter functions are only executed after invoking the endpoint
 // but prior to returning a response.
 func HandlerAfter(after ...HandlerResponseFunc) HandlerOption {
-	return func(h *Handler) { h.after = append(h.after, after...) }
+	return func(h *handlerOptions) { h.after = append(h.after, after...) }
 }
 
 // HandlerErrorLogger is used to log non-terminal errors.
 // By default, no errors are logged.
 // Deprecated: Use HandlerErrorHandler instead.
 func HandlerErrorLogger(logger log.Logger) HandlerOption {
-	return func(h *Handler) { h.errorHandler = transport.NewLogErrorHandler(logger) }
+	return func(h *handlerOptions) { h.errorHandler = transport.NewLogErrorHandler(logger) }
 }
 
 // HandlerErrorHandler is used to handle non-terminal errors.
 // By default, non-terminal errors are ignored.
 func HandlerErrorHandler(errorHandler transport.ErrorHandler) HandlerOption {
-	return func(h *Handler) { h.errorHandler = errorHandler }
+	return func(h *handlerOptions) { h.errorHandler = errorHandler }
 }
 
 // HandlerErrorEncoder is used to encode errors.
 func HandlerErrorEncoder(ee ErrorEncoder) HandlerOption {
-	return func(h *Handler) { h.errorEncoder = ee }
+	return func(h *handlerOptions) { h.errorEncoder = ee }
 }
 
 // HandlerFinalizer sets finalizer which are called at the end of
 // request. By default no finalizer is registered.
 func HandlerFinalizer(f ...HandlerFinalizerFunc) HandlerOption {
-	return func(h *Handler) { h.finalizer = append(h.finalizer, f...) }
+	return func(h *handlerOptions) { h.finalizer = append(h.finalizer, f...) }
 }
 
 // DefaultErrorEncoder defines the default behavior of encoding an error response,
@@ -87,7 +93,7 @@ func DefaultErrorEncoder(ctx context.Context, err error) ([]byte, error) {
 }
 
 // Invoke represents implementation of the AWS lambda.Handler interface.
-func (h *Handler) Invoke(
+func (h *Handler[Request, Response]) Invoke(
 	ctx context.Context,
 	payload []byte,
 ) (resp []byte, err error) {

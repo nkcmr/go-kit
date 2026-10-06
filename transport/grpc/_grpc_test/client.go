@@ -11,15 +11,14 @@ import (
 )
 
 type clientBinding struct {
-	test endpoint.Endpoint
+	test endpoint.Endpoint[TestRequest, *TestResponse]
 }
 
 func (c *clientBinding) Test(ctx context.Context, a string, b int64) (context.Context, string, error) {
-	response, err := c.test(ctx, TestRequest{A: a, B: b})
+	r, err := c.test(ctx, TestRequest{A: a, B: b})
 	if err != nil {
 		return nil, "", err
 	}
-	r := response.(*TestResponse)
 	return r.Ctx, r.V, nil
 }
 

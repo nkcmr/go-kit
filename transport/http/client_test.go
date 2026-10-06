@@ -224,7 +224,7 @@ func TestEncodeJSONRequest(t *testing.T) {
 	client := httptransport.NewClient(
 		"POST",
 		serverURL,
-		httptransport.EncodeJSONRequest,
+		httptransport.EncodeJSONRequest[any],
 		func(context.Context, *http.Response) (interface{}, error) { return nil, nil },
 	).Endpoint()
 

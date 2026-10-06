@@ -17,7 +17,7 @@ import (
 // See http://godoc.org/github.com/streadway/handy/breaker for more
 // information.
 func HandyBreaker(cb breaker.Breaker) endpoint.Middleware {
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			if !cb.Allow() {
 				return nil, breaker.ErrCircuitOpen

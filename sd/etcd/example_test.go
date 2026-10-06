@@ -66,4 +66,6 @@ func Example() {
 	}
 }
 
-func barFactory(string) (endpoint.Endpoint, io.Closer, error) { return endpoint.Nop, nil, nil }
+func barFactory(string) (endpoint.Endpoint[any, any], io.Closer, error) {
+	return endpoint.Nop, nil, nil
+}

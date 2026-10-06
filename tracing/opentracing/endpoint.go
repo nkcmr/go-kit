@@ -26,7 +26,7 @@ func TraceEndpoint(tracer opentracing.Tracer, operationName string, opts ...Endp
 		opt(cfg)
 	}
 
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			if cfg.GetOperationName != nil {
 				if newOperationName := cfg.GetOperationName(ctx, operationName); newOperationName != "" {

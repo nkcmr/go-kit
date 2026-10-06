@@ -18,15 +18,19 @@ type Handler interface {
 	ServeGRPC(ctx context.Context, request interface{}) (context.Context, interface{}, error)
 }
 
-// Server wraps an endpoint and implements grpc.Handler.
-type Server struct {
-	e            endpoint.Endpoint
-	dec          DecodeRequestFunc
-	enc          EncodeResponseFunc
+type serverOptions struct {
 	before       []ServerRequestFunc
 	after        []ServerResponseFunc
 	finalizer    []ServerFinalizerFunc
 	errorHandler transport.ErrorHandler
+}
+
+// Server wraps an endpoint and implements grpc.Handler.
+type Server[Request, Response any] struct {
+	serverOptions
+	e   endpoint.Endpoint[Request, Response]
+	dec DecodeRequestFunc[Request]
+	enc EncodeResponseFunc[Response]
 }
 
 // NewServer constructs a new server, which implements wraps the provided
@@ -34,60 +38,73 @@ type Server struct {
 // bindings that adapt the concrete gRPC methods from their compiled protobuf
 // definitions to individual handlers. Request and response objects are from the
 // caller business domain, not gRPC request and reply types.
-func NewServer(
-	e endpoint.Endpoint,
-	dec DecodeRequestFunc,
-	enc EncodeResponseFunc,
+func NewServer[Request, Response any](
+	e endpoint.Endpoint[Request, Response],
+	dec DecodeRequestFunc[Request],
+	enc EncodeResponseFunc[Response],
 	options ...ServerOption,
-) *Server {
-	s := &Server{
-		e:            e,
-		dec:          dec,
-		enc:          enc,
-		errorHandler: transport.NewLogErrorHandler(log.NewNopLogger()),
+) *Server[Request, Response] {
+	s := &Server[Request, Response]{
+		serverOptions: serverOptions{
+			errorHandler: transport.NewLogErrorHandler(log.NewNopLogger()),
+		},
+		e:   e,
+		dec: dec,
+		enc: enc,
 	}
 	for _, option := range options {
-		option(s)
+		option(&s.serverOptions)
 	}
 	return s
 }
 
 // ServerOption sets an optional parameter for servers.
-type ServerOption func(*Server)
+type ServerOption func(*serverOptions)
+
+// CombineServerOptions returns a ServerOption that applies each of the given
+// options in order. It's useful for packages that provide several related
+// options as one.
+func CombineServerOptions(options ...ServerOption) ServerOption {
+	return func(s *serverOptions) {
+		for _, option := range options {
+			option(s)
+		}
+	}
+}
 
 // ServerBefore functions are executed on the gRPC request object before the
 // request is decoded.
 func ServerBefore(before ...ServerRequestFunc) ServerOption {
-	return func(s *Server) { s.before = append(s.before, before...) }
+	return func(s *serverOptions) { s.before = append(s.before, before...) }
 }
 
 // ServerAfter functions are executed on the gRPC response writer after the
 // endpoint is invoked, but before anything is written to the client.
 func ServerAfter(after ...ServerResponseFunc) ServerOption {
-	return func(s *Server) { s.after = append(s.after, after...) }
+	return func(s *serverOptions) { s.after = append(s.after, after...) }
 }
 
 // ServerErrorLogger is used to log non-terminal errors. By default, no errors
 // are logged.
 // Deprecated: Use ServerErrorHandler instead.
 func ServerErrorLogger(logger log.Logger) ServerOption {
-	return func(s *Server) { s.errorHandler = transport.NewLogErrorHandler(logger) }
+	return func(s *serverOptions) { s.errorHandler = transport.NewLogErrorHandler(logger) }
 }
 
 // ServerErrorHandler is used to handle non-terminal errors. By default, non-terminal errors
 // are ignored.
 func ServerErrorHandler(errorHandler transport.ErrorHandler) ServerOption {
-	return func(s *Server) { s.errorHandler = errorHandler }
+	return func(s *serverOptions) { s.errorHandler = errorHandler }
 }
 
 // ServerFinalizer is executed at the end of every gRPC request.
 // By default, no finalizer is registered.
 func ServerFinalizer(f ...ServerFinalizerFunc) ServerOption {
-	return func(s *Server) { s.finalizer = append(s.finalizer, f...) }
+	return func(s *serverOptions) { s.finalizer = append(s.finalizer, f...) }
 }
 
 // ServeGRPC implements the Handler interface.
-func (s Server) ServeGRPC(ctx context.Context, req interface{}) (retctx context.Context, resp interface{}, err error) {
+func (s Server[Request, Response]) ServeGRPC(ctx context.Context, req interface{}) (retctx context.Context, resp interface{}, err error) {
 	// Retrieve gRPC metadata.
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -107,8 +124,8 @@ func (s Server) ServeGRPC(ctx context.Context, req interface{}) (retctx context.
 	}
 
 	var (
-		request  interface{}
-		response interface{}
+		request  Request
+		response Response
 		grpcResp interface{}
 	)
 

@@ -52,7 +52,7 @@ var (
 // Tokens are signed with a Key ID header (kid) which is useful for determining
 // the key to use for parsing. Particularly useful for clients.
 func NewSigner(kid string, key []byte, method jwt.SigningMethod, claims jwt.Claims) endpoint.Middleware {
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			token := jwt.NewWithClaims(method, claims)
 			token.Header["kid"] = kid
@@ -90,7 +90,7 @@ func StandardClaimsFactory() jwt.Claims {
 // adds the resulting claims to endpoint context or returns error on invalid token.
 // Particularly useful for servers.
 func NewParser(keyFunc jwt.Keyfunc, method jwt.SigningMethod, newClaims ClaimsFactory) endpoint.Middleware {
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			// tokenString is stored in the context from the transport handlers.
 			tokenString, ok := ctx.Value(JWTContextKey).(string)

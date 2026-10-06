@@ -98,7 +98,7 @@ func TestDataRace(t *testing.T) {
 	nullEndpoint := func(_ context.Context, _ interface{}) (interface{}, error) {
 		return nil, nil
 	}
-	nullFactory := func(instance string) (endpoint.Endpoint, io.Closer, error) {
+	nullFactory := func(instance string) (endpoint.Endpoint[any, any], io.Closer, error) {
 		return nullEndpoint, nil, nil
 	}
 	logger := log.Logger(log.LoggerFunc(func(keyvals ...interface{}) error {

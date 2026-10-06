@@ -47,7 +47,7 @@ var (
 func NewEnforcer(
 	subject string, object interface{}, action string,
 ) endpoint.Middleware {
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			casbinModel := ctx.Value(CasbinModelContextKey)
 			casbinPolicy := ctx.Value(CasbinPolicyContextKey)

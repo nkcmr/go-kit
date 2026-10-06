@@ -26,15 +26,13 @@ Let's say we want a service that adds two ints together. We'll serve this at `ht
 The routing table for incoming JSON RPC requests is the `EndpointCodecMap`. The key of the map is the JSON RPC method name. Here, we're routing the `sum` method to an `EndpointCodec` wrapped around `sumEndpoint`.
 
 	jsonrpc.EndpointCodecMap{
-		"sum": jsonrpc.EndpointCodec{
-			Endpoint: sumEndpoint,
-			Decode:   decodeSumRequest,
-			Encode:   encodeSumResponse,
-		},
+		"sum": jsonrpc.NewEndpointCodec(sumEndpoint, decodeSumRequest, encodeSumResponse),
 	}
 
+`NewEndpointCodec` checks at compile time that the endpoint, decoder, and encoder agree on the request and response types. Different methods in the same map can use different types.
+
 ### Decoder
-	type DecodeRequestFunc func(context.Context, json.RawMessage) (request interface{}, err error)
+	type DecodeRequestFunc[Req any] func(context.Context, json.RawMessage) (request Req, err error)
 
 A `DecodeRequestFunc` is given the raw JSON from the `params` property of the Request object, _not_ the whole request object. It returns an object that will be the input to the Endpoint. For our purposes, the output should be a SumRequest, like this:
 
@@ -44,13 +42,10 @@ A `DecodeRequestFunc` is given the raw JSON from the `params` property of the Re
 
 So here's our decoder:
 
-	func decodeSumRequest(ctx context.Context, msg json.RawMessage) (interface{}, error) {
+	func decodeSumRequest(ctx context.Context, msg json.RawMessage) (SumRequest, error) {
 		var req SumRequest
 		err := json.Unmarshal(msg, &req)
-		if err != nil {
-			return nil, err
-		}
-		return req, nil
+		return req, err
 	}
 
 So our `SumRequest` will now be passed to the endpoint. Once the endpoint has done its work, we hand over to the…
@@ -58,27 +53,15 @@ So our `SumRequest` will now be passed to the endpoint. Once the endpoint has do
 ### Encoder
 The encoder takes the output of the endpoint, and builds the raw JSON message that will form the `result` field of a [Response Object](http://www.jsonrpc.org/specification#response_object). Our result is going to be a plain int. Here's our encoder:
 
-	func encodeSumResponse(ctx context.Context, result interface{}) (json.RawMessage, error) {
-		sum, ok := result.(int)
-		if !ok {
-			return nil, errors.New("result is not an int")
-		}
-		b, err := json.Marshal(sum)
-		if err != nil {
-			return nil, err
-		}
-		return b, nil
+	func encodeSumResponse(ctx context.Context, result int) (json.RawMessage, error) {
+		return json.Marshal(result)
 	}
 
 ### Server
 Now that we have an EndpointCodec with decoder, endpoint, and encoder, we can wire up the server:
 
 	handler := jsonrpc.NewServer(jsonrpc.EndpointCodecMap{
-		"sum": jsonrpc.EndpointCodec{
-			Endpoint: sumEndpoint,
-			Decode:   decodeSumRequest,
-			Encode:   encodeSumResponse,
-		},
+		"sum": jsonrpc.NewEndpointCodec(sumEndpoint, decodeSumRequest, encodeSumResponse),
 	})
 	http.Handle("/rpc", handler)
 	http.ListenAndServe(":80", nil)

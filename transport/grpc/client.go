@@ -13,31 +13,34 @@ import (
 
 // Client wraps a gRPC connection and provides a method that implements
 // endpoint.Endpoint.
-type Client struct {
-	client      *grpc.ClientConn
-	serviceName string
-	method      string
-	enc         EncodeRequestFunc
-	dec         DecodeResponseFunc
-	grpcReply   reflect.Type
-	before      []ClientRequestFunc
-	after       []ClientResponseFunc
-	finalizer   []ClientFinalizerFunc
+type Client[Request, Response any] struct {
+	clientOptions
+	client    *grpc.ClientConn
+	method    string
+	enc       EncodeRequestFunc[Request]
+	dec       DecodeResponseFunc[Response]
+	grpcReply reflect.Type
+}
+
+type clientOptions struct {
+	before    []ClientRequestFunc
+	after     []ClientResponseFunc
+	finalizer []ClientFinalizerFunc
 }
 
 // NewClient constructs a usable Client for a single remote endpoint.
 // Pass an zero-value protobuf message of the RPC response type as
 // the grpcReply argument.
-func NewClient(
+func NewClient[Request, Response any](
 	cc *grpc.ClientConn,
 	serviceName string,
 	method string,
-	enc EncodeRequestFunc,
-	dec DecodeResponseFunc,
+	enc EncodeRequestFunc[Request],
+	dec DecodeResponseFunc[Response],
 	grpcReply interface{},
 	options ...ClientOption,
-) *Client {
-	c := &Client{
+) *Client[Request, Response] {
+	c := &Client[Request, Response]{
 		client: cc,
 		method: fmt.Sprintf("/%s/%s", serviceName, method),
 		enc:    enc,
@@ -51,41 +54,55 @@ func NewClient(
 				reflect.ValueOf(grpcReply),
 			).Interface(),
 		),
-		before: []ClientRequestFunc{},
-		after:  []ClientResponseFunc{},
+		clientOptions: clientOptions{
+			before: []ClientRequestFunc{},
+			after:  []ClientResponseFunc{},
+		},
 	}
 	for _, option := range options {
-		option(c)
+		option(&c.clientOptions)
 	}
 	return c
 }
 
 // ClientOption sets an optional parameter for clients.
-type ClientOption func(*Client)
+type ClientOption func(*clientOptions)
+
+// CombineClientOptions returns a ClientOption that applies each of the given
+// options in order. It's useful for packages that provide several related
+// options as one.
+func CombineClientOptions(options ...ClientOption) ClientOption {
+	return func(c *clientOptions) {
+		for _, option := range options {
+			option(c)
+		}
+	}
+}
 
 // ClientBefore sets the RequestFuncs that are applied to the outgoing gRPC
 // request before it's invoked.
 func ClientBefore(before ...ClientRequestFunc) ClientOption {
-	return func(c *Client) { c.before = append(c.before, before...) }
+	return func(c *clientOptions) { c.before = append(c.before, before...) }
 }
 
 // ClientAfter sets the ClientResponseFuncs that are applied to the incoming
 // gRPC response prior to it being decoded. This is useful for obtaining
 // response metadata and adding onto the context prior to decoding.
 func ClientAfter(after ...ClientResponseFunc) ClientOption {
-	return func(c *Client) { c.after = append(c.after, after...) }
+	return func(c *clientOptions) { c.after = append(c.after, after...) }
 }
 
 // ClientFinalizer is executed at the end of every gRPC request.
 // By default, no finalizer is registered.
 func ClientFinalizer(f ...ClientFinalizerFunc) ClientOption {
-	return func(s *Client) { s.finalizer = append(s.finalizer, f...) }
+	return func(s *clientOptions) { s.finalizer = append(s.finalizer, f...) }
 }
 
 // Endpoint returns a usable endpoint that will invoke the gRPC specified by the
 // client.
-func (c Client) Endpoint() endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+func (c Client[Request, Response]) Endpoint() endpoint.Endpoint[Request, Response] {
+	return func(ctx context.Context, request Request) (response Response, err error) {
+		var zero Response
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
@@ -101,7 +118,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 
 		req, err := c.enc(ctx, request)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		md := &metadata.MD{}
@@ -116,7 +133,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 			ctx, c.method, req, grpcReply, grpc.Header(&header),
 			grpc.Trailer(&trailer),
 		); err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		for _, f := range c.after {
@@ -125,7 +142,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 
 		response, err = c.dec(ctx, grpcReply)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 		return response, nil
 	}

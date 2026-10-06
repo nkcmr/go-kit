@@ -99,11 +99,7 @@ func GRPCClientTrace(tracer *zipkin.Tracer, options ...TracerOption) kitgrpc.Cli
 		},
 	)
 
-	return func(c *kitgrpc.Client) {
-		clientBefore(c)
-		clientAfter(c)
-		clientFinalizer(c)
-	}
+	return kitgrpc.CombineClientOptions(clientBefore, clientAfter, clientFinalizer)
 
 }
 
@@ -206,9 +202,5 @@ func GRPCServerTrace(tracer *zipkin.Tracer, options ...TracerOption) kitgrpc.Ser
 		},
 	)
 
-	return func(s *kitgrpc.Server) {
-		serverBefore(s)
-		serverAfter(s)
-		serverFinalizer(s)
-	}
+	return kitgrpc.CombineServerOptions(serverBefore, serverAfter, serverFinalizer)
 }

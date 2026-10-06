@@ -88,9 +88,11 @@ func TestBeforeAfterFuncs(t *testing.T) {
 			afterCalled := false
 			finalizerCalled := false
 
-			sut := jsonrpc.NewClient(
+			sut := jsonrpc.NewClient[any, any](
 				testUrl,
 				"dummy",
+				nil,
+				nil,
 				jsonrpc.ClientBefore(func(ctx context.Context, req *http.Request) context.Context {
 					beforeCalled = true
 					return ctx
@@ -183,8 +185,8 @@ func TestClientHappyPath(t *testing.T) {
 	sut := jsonrpc.NewClient(
 		mustParse(server.URL),
 		"add",
-		jsonrpc.ClientRequestEncoder(encode),
-		jsonrpc.ClientResponseDecoder(decode),
+		encode,
+		decode,
 		jsonrpc.ClientBefore(beforeFunc),
 		jsonrpc.ClientAfter(afterFunc),
 		jsonrpc.ClientRequestIDGenerator(gen),
@@ -259,9 +261,11 @@ func TestCanUseDefaults(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sut := jsonrpc.NewClient(
+	sut := jsonrpc.NewClient[any, any](
 		mustParse(server.URL),
 		"add",
+		nil,
+		nil,
 	)
 
 	type addRequest struct {
@@ -315,7 +319,7 @@ func TestClientCanHandleJSONRPCError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sut := jsonrpc.NewClient(mustParse(server.URL), "add")
+	sut := jsonrpc.NewClient[any, any](mustParse(server.URL), "add", nil, nil)
 
 	_, err := sut.Endpoint()(context.Background(), 5)
 	if err == nil {
@@ -366,4 +370,37 @@ func mustParse(s string) *url.URL {
 		panic(err)
 	}
 	return u
+}
+
+func TestTypedClientDefaultCodecs(t *testing.T) {
+	type addRequest struct {
+		A int
+		B int
+	}
+
+	var paramsAtServer addRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req jsonrpc.Request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(req.Params, &paramsAtServer); err != nil {
+			t.Fatal(err)
+		}
+		w.Write([]byte(`{"jsonrpc":"2.0", "result":4}`))
+	}))
+	defer server.Close()
+
+	sut := jsonrpc.NewClient[addRequest, int](mustParse(server.URL), "add", nil, nil)
+
+	result, err := sut.Endpoint()(context.Background(), addRequest{2, 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want, have := 4, result; want != have {
+		t.Errorf("want %d, have %d", want, have)
+	}
+	if want, have := (addRequest{2, 2}), paramsAtServer; want != have {
+		t.Errorf("want %+v, have %+v", want, have)
+	}
 }

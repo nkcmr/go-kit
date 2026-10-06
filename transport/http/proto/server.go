@@ -13,8 +13,8 @@ import (
 // Many Proto-over-HTTP services can use it as a sensible default. If the response
 // implements Headerer, the provided headers will be applied to the response. If the
 // response implements StatusCoder, the provided StatusCode will be used instead of 200.
-func EncodeProtoResponse(ctx context.Context, w http.ResponseWriter, pres interface{}) error {
-	res, ok := pres.(proto.Message)
+func EncodeProtoResponse[Response any](ctx context.Context, w http.ResponseWriter, pres Response) error {
+	res, ok := any(pres).(proto.Message)
 	if !ok {
 		return errors.New("response does not implement proto.Message")
 	}
@@ -25,7 +25,7 @@ func EncodeProtoResponse(ctx context.Context, w http.ResponseWriter, pres interf
 		}
 	}
 	code := http.StatusOK
-	if sc, ok := pres.(httptransport.StatusCoder); ok {
+	if sc, ok := any(pres).(httptransport.StatusCoder); ok {
 		code = sc.StatusCode()
 	}
 	w.WriteHeader(code)

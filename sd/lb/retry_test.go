@@ -13,7 +13,7 @@ import (
 
 func TestRetryMaxTotalFail(t *testing.T) {
 	var (
-		endpoints = sd.FixedEndpointer{} // no endpoints
+		endpoints = sd.FixedEndpointer[any, any]{} // no endpoints
 		rr        = lb.NewRoundRobin(endpoints)
 		retry     = lb.Retry(999, time.Second, rr) // lots of retries
 		ctx       = context.Background()
@@ -25,12 +25,12 @@ func TestRetryMaxTotalFail(t *testing.T) {
 
 func TestRetryMaxPartialFail(t *testing.T) {
 	var (
-		endpoints = []endpoint.Endpoint{
+		endpoints = []endpoint.Endpoint[any, any]{
 			func(context.Context, interface{}) (interface{}, error) { return nil, errors.New("error one") },
 			func(context.Context, interface{}) (interface{}, error) { return nil, errors.New("error two") },
 			func(context.Context, interface{}) (interface{}, error) { return struct{}{}, nil /* OK */ },
 		}
-		endpointer = sd.FixedEndpointer{
+		endpointer = sd.FixedEndpointer[any, any]{
 			0: endpoints[0],
 			1: endpoints[1],
 			2: endpoints[2],
@@ -46,12 +46,12 @@ func TestRetryMaxPartialFail(t *testing.T) {
 
 func TestRetryMaxSuccess(t *testing.T) {
 	var (
-		endpoints = []endpoint.Endpoint{
+		endpoints = []endpoint.Endpoint[any, any]{
 			func(context.Context, interface{}) (interface{}, error) { return nil, errors.New("error one") },
 			func(context.Context, interface{}) (interface{}, error) { return nil, errors.New("error two") },
 			func(context.Context, interface{}) (interface{}, error) { return struct{}{}, nil /* OK */ },
 		}
-		endpointer = sd.FixedEndpointer{
+		endpointer = sd.FixedEndpointer[any, any]{
 			0: endpoints[0],
 			1: endpoints[1],
 			2: endpoints[2],
@@ -70,7 +70,7 @@ func TestRetryTimeout(t *testing.T) {
 		step    = make(chan struct{})
 		e       = func(context.Context, interface{}) (interface{}, error) { <-step; return struct{}{}, nil }
 		timeout = time.Millisecond
-		retry   = lb.Retry(999, timeout, lb.NewRoundRobin(sd.FixedEndpointer{0: e}))
+		retry   = lb.Retry(999, timeout, lb.NewRoundRobin(sd.FixedEndpointer[any, any]{0: e}))
 		errs    = make(chan error, 1)
 		invoke  = func() { _, err := retry(context.Background(), struct{}{}); errs <- err }
 	)
@@ -92,7 +92,7 @@ func TestAbortEarlyCustomMessage(t *testing.T) {
 	var (
 		myErr     = errors.New("aborting early")
 		cb        = func(int, error) (bool, error) { return false, myErr }
-		endpoints = sd.FixedEndpointer{} // no endpoints
+		endpoints = sd.FixedEndpointer[any, any]{} // no endpoints
 		rr        = lb.NewRoundRobin(endpoints)
 		retry     = lb.RetryWithCallback(time.Second, rr, cb) // lots of retries
 		ctx       = context.Background()
@@ -115,7 +115,7 @@ func TestErrorPassedUnchangedToCallback(t *testing.T) {
 		endpoint = func(ctx context.Context, request interface{}) (interface{}, error) {
 			return nil, myErr
 		}
-		endpoints = sd.FixedEndpointer{endpoint} // no endpoints
+		endpoints = sd.FixedEndpointer[any, any]{endpoint} // no endpoints
 		rr        = lb.NewRoundRobin(endpoints)
 		retry     = lb.RetryWithCallback(time.Second, rr, cb) // lots of retries
 		ctx       = context.Background()
@@ -128,7 +128,7 @@ func TestErrorPassedUnchangedToCallback(t *testing.T) {
 
 func TestHandleNilCallback(t *testing.T) {
 	var (
-		endpointer = sd.FixedEndpointer{
+		endpointer = sd.FixedEndpointer[any, any]{
 			func(context.Context, interface{}) (interface{}, error) { return struct{}{}, nil /* OK */ },
 		}
 		rr  = lb.NewRoundRobin(endpointer)
@@ -137,5 +137,32 @@ func TestHandleNilCallback(t *testing.T) {
 	retry := lb.RetryWithCallback(time.Second, rr, nil)
 	if _, err := retry(ctx, struct{}{}); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestRetryTyped(t *testing.T) {
+	var calls int
+	length := func(_ context.Context, s string) (int, error) {
+		calls++
+		if calls == 1 {
+			return 0, errors.New("first call fails")
+		}
+		return len(s), nil
+	}
+
+	// No explicit type arguments: Request and Response are inferred from the
+	// endpointer, through the balancer, to the retrying endpoint.
+	endpointer := sd.FixedEndpointer[string, int]{length}
+	var e endpoint.Endpoint[string, int] = lb.Retry(2, time.Second, lb.NewRoundRobin(endpointer))
+
+	n, err := e(context.Background(), "hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want, have := 5, n; want != have {
+		t.Errorf("want %d, have %d", want, have)
+	}
+	if want, have := 2, calls; want != have {
+		t.Errorf("want %d calls, have %d", want, have)
 	}
 }

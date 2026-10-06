@@ -14,7 +14,7 @@ import (
 //
 // See http://godoc.org/github.com/sony/gobreaker for more information.
 func Gobreaker(cb *gobreaker.CircuitBreaker) endpoint.Middleware {
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
 			return cb.Execute(func() (interface{}, error) { return next(ctx, request) })
 		}

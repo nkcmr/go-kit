@@ -51,12 +51,12 @@ func TestJSONRPCClientTrace(t *testing.T) {
 		ep := jsonrpc.NewClient(
 			rURL,
 			endpointName,
-			jsonrpc.ClientRequestEncoder(func(ctx context.Context, i interface{}) (json.RawMessage, error) {
+			func(ctx context.Context, i interface{}) (json.RawMessage, error) {
 				return json.RawMessage(`{}`), nil
-			}),
-			jsonrpc.ClientResponseDecoder(func(ctx context.Context, r jsonrpc.Response) (response interface{}, err error) {
+			},
+			func(ctx context.Context, r jsonrpc.Response) (response interface{}, err error) {
 				return nil, tr.err
-			}),
+			},
 			clientTracer,
 		).Endpoint()
 

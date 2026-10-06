@@ -29,7 +29,7 @@ func TraceEndpoint(name string, options ...EndpointOption) endpoint.Middleware {
 		o(cfg)
 	}
 
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			if cfg.GetName != nil {
 				if newName := cfg.GetName(ctx, name); newName != "" {

@@ -109,11 +109,7 @@ func HTTPClientTrace(tracer *zipkin.Tracer, options ...TracerOption) kithttp.Cli
 		},
 	)
 
-	return func(c *kithttp.Client) {
-		clientBefore(c)
-		clientAfter(c)
-		clientFinalizer(c)
-	}
+	return kithttp.CombineClientOptions(clientBefore, clientAfter, clientFinalizer)
 }
 
 // HTTPServerTrace enables native Zipkin tracing of a Go kit HTTP transport
@@ -217,9 +213,5 @@ func HTTPServerTrace(tracer *zipkin.Tracer, options ...TracerOption) kithttp.Ser
 		},
 	)
 
-	return func(s *kithttp.Server) {
-		serverBefore(s)
-		serverAfter(s)
-		serverFinalizer(s)
-	}
+	return kithttp.CombineServerOptions(serverBefore, serverAfter, serverFinalizer)
 }

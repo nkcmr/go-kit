@@ -79,7 +79,7 @@ func TestIntegration(t *testing.T) {
 	}
 	endpointer := sd.NewEndpointer(
 		instancer,
-		func(string) (endpoint.Endpoint, io.Closer, error) { return endpoint.Nop, nil, nil },
+		func(string) (endpoint.Endpoint[any, any], io.Closer, error) { return endpoint.Nop, nil, nil },
 		log.With(log.NewLogfmtLogger(os.Stderr), "component", "instancer"),
 	)
 	t.Logf("Constructed Endpointer OK")

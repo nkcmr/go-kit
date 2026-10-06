@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -18,50 +17,67 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client wraps a URL and provides a method that implements endpoint.Endpoint.
-type Client struct {
+type clientOptions struct {
 	client         HTTPClient
-	req            CreateRequestFunc
-	dec            DecodeResponseFunc
 	before         []RequestFunc
 	after          []ClientResponseFunc
 	finalizer      []ClientFinalizerFunc
 	bufferedStream bool
 }
 
+// Client wraps a URL and provides a method that implements endpoint.Endpoint.
+type Client[Request, Response any] struct {
+	clientOptions
+	req CreateRequestFunc[Request]
+	dec DecodeResponseFunc[Response]
+}
+
 // NewClient constructs a usable Client for a single remote method.
-func NewClient(method string, tgt *url.URL, enc EncodeRequestFunc, dec DecodeResponseFunc, options ...ClientOption) *Client {
+func NewClient[Request, Response any](method string, tgt *url.URL, enc EncodeRequestFunc[Request], dec DecodeResponseFunc[Response], options ...ClientOption) *Client[Request, Response] {
 	return NewExplicitClient(makeCreateRequestFunc(method, tgt, enc), dec, options...)
 }
 
 // NewExplicitClient is like NewClient but uses a CreateRequestFunc instead of a
 // method, target URL, and EncodeRequestFunc, which allows for more control over
 // the outgoing HTTP request.
-func NewExplicitClient(req CreateRequestFunc, dec DecodeResponseFunc, options ...ClientOption) *Client {
-	c := &Client{
-		client: http.DefaultClient,
-		req:    req,
-		dec:    dec,
+func NewExplicitClient[Request, Response any](req CreateRequestFunc[Request], dec DecodeResponseFunc[Response], options ...ClientOption) *Client[Request, Response] {
+	c := &Client[Request, Response]{
+		clientOptions: clientOptions{
+			client: http.DefaultClient,
+		},
+		req: req,
+		dec: dec,
 	}
 	for _, option := range options {
-		option(c)
+		option(&c.clientOptions)
 	}
 	return c
 }
 
 // ClientOption sets an optional parameter for clients.
-type ClientOption func(*Client)
+type ClientOption func(*clientOptions)
+
+// CombineClientOptions returns a ClientOption that applies each of the given
+// options in order. It's useful for packages that provide several related
+// options as one.
+func CombineClientOptions(options ...ClientOption) ClientOption {
+	return func(c *clientOptions) {
+		for _, option := range options {
+			option(c)
+		}
+	}
+}
 
 // SetClient sets the underlying HTTP client used for requests.
 // By default, http.DefaultClient is used.
 func SetClient(client HTTPClient) ClientOption {
-	return func(c *Client) { c.client = client }
+	return func(c *clientOptions) { c.client = client }
 }
 
 // ClientBefore adds one or more RequestFuncs to be applied to the outgoing HTTP
 // request before it's invoked.
 func ClientBefore(before ...RequestFunc) ClientOption {
-	return func(c *Client) { c.before = append(c.before, before...) }
+	return func(c *clientOptions) { c.before = append(c.before, before...) }
 }
 
 // ClientAfter adds one or more ClientResponseFuncs, which are applied to the
@@ -69,26 +85,31 @@ func ClientBefore(before ...RequestFunc) ClientOption {
 // obtaining anything off of the response and adding it into the context prior
 // to decoding.
 func ClientAfter(after ...ClientResponseFunc) ClientOption {
-	return func(c *Client) { c.after = append(c.after, after...) }
+	return func(c *clientOptions) { c.after = append(c.after, after...) }
 }
 
 // ClientFinalizer adds one or more ClientFinalizerFuncs to be executed at the
 // end of every HTTP request. Finalizers are executed in the order in which they
 // were added. By default, no finalizer is registered.
 func ClientFinalizer(f ...ClientFinalizerFunc) ClientOption {
-	return func(s *Client) { s.finalizer = append(s.finalizer, f...) }
+	return func(c *clientOptions) { c.finalizer = append(c.finalizer, f...) }
 }
 
 // BufferedStream sets whether the HTTP response body is left open, allowing it
 // to be read from later. Useful for transporting a file as a buffered stream.
 // That body has to be drained and closed to properly end the request.
 func BufferedStream(buffered bool) ClientOption {
-	return func(c *Client) { c.bufferedStream = buffered }
+	return func(c *clientOptions) { c.bufferedStream = buffered }
+}
+
+func zero[T any]() T {
+	var zv T
+	return zv
 }
 
 // Endpoint returns a usable Go kit endpoint that calls the remote HTTP endpoint.
-func (c Client) Endpoint() endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
+func (c Client[Request, Response]) Endpoint() endpoint.Endpoint[Request, Response] {
+	return func(ctx context.Context, request Request) (Response, error) {
 		ctx, cancel := context.WithCancel(ctx)
 
 		var (
@@ -110,7 +131,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 		req, err := c.req(ctx, request)
 		if err != nil {
 			cancel()
-			return nil, err
+			return zero[Response](), err
 		}
 
 		for _, f := range c.before {
@@ -120,7 +141,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 		resp, err = c.client.Do(req.WithContext(ctx))
 		if err != nil {
 			cancel()
-			return nil, err
+			return zero[Response](), err
 		}
 
 		// If the caller asked for a buffered stream, we don't cancel the
@@ -139,7 +160,7 @@ func (c Client) Endpoint() endpoint.Endpoint {
 
 		response, err := c.dec(ctx, resp)
 		if err != nil {
-			return nil, err
+			return zero[Response](), err
 		}
 
 		return response, nil
@@ -172,30 +193,30 @@ type ClientFinalizerFunc func(ctx context.Context, err error)
 // JSON object to the Request body. Many JSON-over-HTTP services can use it as
 // a sensible default. If the request implements Headerer, the provided headers
 // will be applied to the request.
-func EncodeJSONRequest(c context.Context, r *http.Request, request interface{}) error {
+func EncodeJSONRequest[Request any](c context.Context, r *http.Request, request Request) error {
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
-	if headerer, ok := request.(Headerer); ok {
+	if headerer, ok := any(request).(Headerer); ok {
 		for k := range headerer.Headers() {
 			r.Header.Set(k, headerer.Headers().Get(k))
 		}
 	}
 	var b bytes.Buffer
-	r.Body = ioutil.NopCloser(&b)
+	r.Body = io.NopCloser(&b)
 	return json.NewEncoder(&b).Encode(request)
 }
 
 // EncodeXMLRequest is an EncodeRequestFunc that serializes the request as a
 // XML object to the Request body. If the request implements Headerer,
 // the provided headers will be applied to the request.
-func EncodeXMLRequest(c context.Context, r *http.Request, request interface{}) error {
+func EncodeXMLRequest[Request any](c context.Context, r *http.Request, request Request) error {
 	r.Header.Set("Content-Type", "text/xml; charset=utf-8")
-	if headerer, ok := request.(Headerer); ok {
+	if headerer, ok := any(request).(Headerer); ok {
 		for k := range headerer.Headers() {
 			r.Header.Set(k, headerer.Headers().Get(k))
 		}
 	}
 	var b bytes.Buffer
-	r.Body = ioutil.NopCloser(&b)
+	r.Body = io.NopCloser(&b)
 	return xml.NewEncoder(&b).Encode(request)
 }
 
@@ -203,8 +224,8 @@ func EncodeXMLRequest(c context.Context, r *http.Request, request interface{}) e
 //
 //
 
-func makeCreateRequestFunc(method string, target *url.URL, enc EncodeRequestFunc) CreateRequestFunc {
-	return func(ctx context.Context, request interface{}) (*http.Request, error) {
+func makeCreateRequestFunc[Request any](method string, target *url.URL, enc EncodeRequestFunc[Request]) CreateRequestFunc[Request] {
+	return func(ctx context.Context, request Request) (*http.Request, error) {
 		req, err := http.NewRequest(method, target.String(), nil)
 		if err != nil {
 			return nil, err

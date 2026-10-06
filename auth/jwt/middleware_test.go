@@ -38,7 +38,7 @@ var (
 	malformedKey      = "malformed.jwt.token"
 )
 
-func signingValidator(t *testing.T, signer endpoint.Endpoint, expectedKey string) {
+func signingValidator(t *testing.T, signer endpoint.Endpoint[any, any], expectedKey string) {
 	ctx, err := signer(context.Background(), struct{}{})
 	if err != nil {
 		t.Fatalf("Signer returned error: %s", err)

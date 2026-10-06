@@ -30,7 +30,7 @@ func TestXRateDelaying(t *testing.T) {
 		"exceed context deadline")
 }
 
-func testSuccessThenFailure(t *testing.T, e endpoint.Endpoint, failContains string) {
+func testSuccessThenFailure(t *testing.T, e endpoint.Endpoint[any, any], failContains string) {
 	ctx, cxl := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cxl()
 

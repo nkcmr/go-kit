@@ -25,7 +25,7 @@ func testFailingEndpoint(
 
 	// Create a mock endpoint and wrap it with the breaker.
 	m := mock{}
-	var e endpoint.Endpoint
+	var e endpoint.Endpoint[any, any]
 	e = m.endpoint
 	e = breaker(e)
 

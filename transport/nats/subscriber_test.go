@@ -510,7 +510,7 @@ func testSubscriber(t *testing.T) (step func(), resp <-chan *nats.Msg) {
 	return func() { stepch <- true }, response
 }
 
-func testRequest(t *testing.T, c *nats.Conn, handler *natstransport.Subscriber) TestResponse {
+func testRequest[Request, Response any](t *testing.T, c *nats.Conn, handler *natstransport.Subscriber[Request, Response]) TestResponse {
 	sub, err := c.QueueSubscribe("natstransport.test", "natstransport", handler.ServeMsg(c))
 	if err != nil {
 		t.Fatal(err)

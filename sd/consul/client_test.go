@@ -141,7 +141,7 @@ func registration2entry(r *stdconsul.AgentServiceRegistration) *stdconsul.Servic
 	}
 }
 
-func testFactory(instance string) (endpoint.Endpoint, io.Closer, error) {
+func testFactory(instance string) (endpoint.Endpoint[any, any], io.Closer, error) {
 	return func(context.Context, interface{}) (interface{}, error) {
 		return instance, nil
 	}, nil, nil

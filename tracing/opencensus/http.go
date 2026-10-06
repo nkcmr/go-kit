@@ -82,11 +82,7 @@ func HTTPClientTrace(options ...TracerOption) kithttp.ClientOption {
 		},
 	)
 
-	return func(c *kithttp.Client) {
-		clientBefore(c)
-		clientAfter(c)
-		clientFinalizer(c)
-	}
+	return kithttp.CombineClientOptions(clientBefore, clientAfter, clientFinalizer)
 }
 
 // HTTPServerTrace enables OpenCensus tracing of a Go kit HTTP transport server.
@@ -167,8 +163,5 @@ func HTTPServerTrace(options ...TracerOption) kithttp.ServerOption {
 		},
 	)
 
-	return func(s *kithttp.Server) {
-		serverBefore(s)
-		serverFinalizer(s)
-	}
+	return kithttp.CombineServerOptions(serverBefore, serverFinalizer)
 }

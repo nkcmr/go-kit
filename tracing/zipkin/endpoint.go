@@ -14,7 +14,7 @@ import (
 // tracing middleware or custom before and after transport functions as
 // propagation of SpanContext is not provided in this middleware.
 func TraceEndpoint(tracer *zipkin.Tracer, name string) endpoint.Middleware {
-	return func(next endpoint.Endpoint) endpoint.Endpoint {
+	return func(next endpoint.Endpoint[any, any]) endpoint.Endpoint[any, any] {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
 			var sc model.SpanContext
 			if parentSpan := zipkin.SpanFromContext(ctx); parentSpan != nil {

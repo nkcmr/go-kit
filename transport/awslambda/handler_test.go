@@ -340,7 +340,7 @@ type helloResponse struct {
 	Greeting string `json:"greeting"`
 }
 
-func makeTest01HelloEndpoint(svc serviceTest01) endpoint.Endpoint {
+func makeTest01HelloEndpoint(svc serviceTest01) endpoint.Endpoint[any, any] {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(helloRequest)
 		greeting := svc.hello(req.Name)
@@ -348,7 +348,7 @@ func makeTest01HelloEndpoint(svc serviceTest01) endpoint.Endpoint {
 	}
 }
 
-func makeTest01FailEndpoint(_ serviceTest01) endpoint.Endpoint {
+func makeTest01FailEndpoint(_ serviceTest01) endpoint.Endpoint[any, any] {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("test error endpoint")
 	}

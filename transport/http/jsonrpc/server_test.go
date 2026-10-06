@@ -405,3 +405,43 @@ func testServer(t *testing.T) (step func(), resp <-chan *http.Response) {
 	}()
 	return func() { stepch <- true }, response
 }
+
+func TestNewEndpointCodec(t *testing.T) {
+	sum := func(_ context.Context, operands []int) (int, error) {
+		var total int
+		for _, o := range operands {
+			total += o
+		}
+		return total, nil
+	}
+	decode := func(_ context.Context, msg json.RawMessage) ([]int, error) {
+		var operands []int
+		err := json.Unmarshal(msg, &operands)
+		return operands, err
+	}
+	encode := func(_ context.Context, result int) (json.RawMessage, error) {
+		return json.Marshal(result)
+	}
+
+	ecm := jsonrpc.EndpointCodecMap{
+		"add": jsonrpc.NewEndpointCodec(sum, decode, encode),
+	}
+	server := httptest.NewServer(jsonrpc.NewServer(ecm))
+	defer server.Close()
+
+	resp, err := http.Post(server.URL, "application/json", addBody())
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf, _ := ioutil.ReadAll(resp.Body)
+	rpcRes, err := unmarshalResponse(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rpcRes.Error != nil {
+		t.Fatalf("unexpected error: %v", rpcRes.Error)
+	}
+	if want, have := "5", string(rpcRes.Result); want != have {
+		t.Errorf("want %s, have %s", want, have)
+	}
+}

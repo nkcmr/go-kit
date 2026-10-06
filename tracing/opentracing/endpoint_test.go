@@ -132,7 +132,7 @@ func TestTraceEndpointWithOptions(t *testing.T) {
 			5,
 			1*time.Second,
 			lb.NewRoundRobin(
-				sd.FixedEndpointer{
+				sd.FixedEndpointer[any, any]{
 					func(context.Context, interface{}) (interface{}, error) {
 						return nil, err1
 					},

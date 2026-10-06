@@ -16,7 +16,7 @@ func TestDefaultEndpointer(t *testing.T) {
 		ca = make(closer)
 		cb = make(closer)
 		c  = map[string]io.Closer{"a": ca, "b": cb}
-		f  = func(instance string) (endpoint.Endpoint, io.Closer, error) {
+		f  = func(instance string) (endpoint.Endpoint[any, any], io.Closer, error) {
 			return endpoint.Nop, c[instance], nil
 		}
 		instancer = &mockInstancer{instance.NewCache()}
@@ -27,7 +27,7 @@ func TestDefaultEndpointer(t *testing.T) {
 	endpointer := sd.NewEndpointer(instancer, f, log.NewNopLogger(), sd.InvalidateOnError(time.Minute))
 
 	var (
-		endpoints []endpoint.Endpoint
+		endpoints []endpoint.Endpoint[any, any]
 		err       error
 	)
 	if !within(time.Second, func() bool {

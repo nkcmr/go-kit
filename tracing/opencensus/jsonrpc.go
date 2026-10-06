@@ -83,11 +83,7 @@ func JSONRPCClientTrace(options ...TracerOption) jsonrpc.ClientOption {
 		},
 	)
 
-	return func(c *jsonrpc.Client) {
-		clientBefore(c)
-		clientAfter(c)
-		clientFinalizer(c)
-	}
+	return jsonrpc.CombineClientOptions(clientBefore, clientAfter, clientFinalizer)
 }
 
 // JSONRPCServerTrace enables OpenCensus tracing of a Go kit JSONRPC transport server.

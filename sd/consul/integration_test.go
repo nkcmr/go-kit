@@ -41,7 +41,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// Build an Instancer on r.Name + r.Tags.
-	factory := func(instance string) (endpoint.Endpoint, io.Closer, error) {
+	factory := func(instance string) (endpoint.Endpoint[any, any], io.Closer, error) {
 		t.Logf("factory invoked for %q", instance)
 		return endpoint.Nop, nil, nil
 	}

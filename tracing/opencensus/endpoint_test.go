@@ -70,7 +70,7 @@ func TestTraceEndpoint(t *testing.T) {
 
 	// span3
 	mw = opencensus.TraceEndpoint(span3)
-	ep := lb.Retry(5, 1*time.Second, lb.NewRoundRobin(sd.FixedEndpointer{passEndpoint}))
+	ep := lb.Retry(5, 1*time.Second, lb.NewRoundRobin(sd.FixedEndpointer[any, any]{passEndpoint}))
 	mw(ep)(ctx, err2)
 
 	// span4

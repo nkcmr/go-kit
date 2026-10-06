@@ -10,6 +10,10 @@ NewParser takes a key function and an expected signing method and returns an
 context via the `jwt.JWTContextKey`. If the token is valid, any claims
 will be added to the context via the `jwt.JWTClaimsContextKey`.
 
+Middleware wraps `endpoint.Endpoint[any, any]`, so use `endpoint.Erase` to
+wrap a typed endpoint, and `endpoint.Typed` to convert the result back if you
+need a typed endpoint again.
+
 ```go
 import (
 	stdjwt "github.com/golang-jwt/jwt/v4"
@@ -19,10 +23,10 @@ import (
 )
 
 func main() {
-	var exampleEndpoint endpoint.Endpoint
+	var exampleEndpoint endpoint.Endpoint[any, any]
 	{
 		kf := func(token *stdjwt.Token) (interface{}, error) { return []byte("SigningString"), nil }
-		exampleEndpoint = MakeExampleEndpoint(service)
+		exampleEndpoint = endpoint.Erase(MakeExampleEndpoint(service))
 		exampleEndpoint = jwt.NewParser(kf, stdjwt.SigningMethodHS256, jwt.StandardClaimsFactory)(exampleEndpoint)
 	}
 }
@@ -41,9 +45,9 @@ import (
 )
 
 func main() {
-	var exampleEndpoint endpoint.Endpoint
+	var exampleEndpoint endpoint.Endpoint[any, any]
 	{
-		exampleEndpoint = grpctransport.NewClient(...).Endpoint()
+		exampleEndpoint = endpoint.Erase(grpctransport.NewClient(...).Endpoint())
 		exampleEndpoint = jwt.NewSigner(
 			"kid-header",
 			[]byte("SigningString"),
@@ -75,9 +79,9 @@ import (
 func main() {
 
 	options := []httptransport.ClientOption{}
-	var exampleEndpoint endpoint.Endpoint
+	var exampleEndpoint endpoint.Endpoint[any, any]
 	{
-		exampleEndpoint = grpctransport.NewClient(..., grpctransport.ClientBefore(jwt.ContextToGRPC())).Endpoint()
+		exampleEndpoint = endpoint.Erase(grpctransport.NewClient(..., grpctransport.ClientBefore(jwt.ContextToGRPC())).Endpoint())
 		exampleEndpoint = jwt.NewSigner(
 			"kid-header",
 			[]byte("SigningString"),

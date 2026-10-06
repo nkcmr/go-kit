@@ -251,7 +251,7 @@ func TestEncodeJSONRequest(t *testing.T) {
 	publisher := natstransport.NewPublisher(
 		c,
 		"natstransport.test",
-		natstransport.EncodeJSONRequest,
+		natstransport.EncodeJSONRequest[any],
 		func(context.Context, *nats.Msg) (interface{}, error) { return nil, nil },
 	).Endpoint()
 
