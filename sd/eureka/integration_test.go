@@ -39,7 +39,13 @@ func TestIntegration(t *testing.T) {
 
 	// Create a Fargo connection and a Eureka registrar.
 	fargoConnection := fargo.NewConnFromConfig(fargoConfig)
-	registrar1 := NewRegistrar(&fargoConnection, instanceTest1, log.With(logger, "component", "registrar1"))
+
+	// fargo overwrites registered instances with the server's view of them,
+	// so register copies rather than the package-level fixtures, which other
+	// tests' background goroutines may still be reading.
+	instance1, instance2 := *instanceTest1, *instanceTest2
+
+	registrar1 := NewRegistrar(&fargoConnection, &instance1, log.With(logger, "component", "registrar1"))
 
 	// Register one instance.
 	registrar1.Register()
@@ -66,7 +72,7 @@ func TestIntegration(t *testing.T) {
 		if state.Err != nil {
 			t.Error(state.Err)
 		}
-		if want, have := 1, len(state.Instances); want != have {
+		if want, have := count, len(state.Instances); want != have {
 			t.Errorf("want %d, have %d", want, have)
 		}
 	}
@@ -75,7 +81,7 @@ func TestIntegration(t *testing.T) {
 	waitForInstances(1)
 
 	// Register a second instance
-	registrar2 := NewRegistrar(&fargoConnection, instanceTest2, log.With(logger, "component", "registrar2"))
+	registrar2 := NewRegistrar(&fargoConnection, &instance2, log.With(logger, "component", "registrar2"))
 	registrar2.Register()
 	defer registrar2.Deregister() // In case of exceptional circumstances.
 
