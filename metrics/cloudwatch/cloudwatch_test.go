@@ -3,6 +3,7 @@ package cloudwatch
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -42,8 +43,17 @@ func (mcw *mockCloudWatch) PutMetricData(input *cloudwatch.PutMetricDataInput) (
 		}
 
 		if len(datum.Values) > 0 {
-			for _, v := range datum.Values {
-				mcw.valuesReceived[*datum.MetricName] = append(mcw.valuesReceived[*datum.MetricName], *v)
+			for i, v := range datum.Values {
+				// Values are deduplicated, with Counts[i] holding the number
+				// of times Values[i] was observed. A nil Counts means each
+				// value was observed once.
+				count := 1
+				if datum.Counts != nil {
+					count = int(*datum.Counts[i])
+				}
+				for j := 0; j < count; j++ {
+					mcw.valuesReceived[*datum.MetricName] = append(mcw.valuesReceived[*datum.MetricName], *v)
+				}
 			}
 		} else {
 			mcw.valuesReceived[*datum.MetricName] = append(mcw.valuesReceived[*datum.MetricName], *datum.Value)
@@ -295,5 +305,31 @@ func TestErrorLog(t *testing.T) {
 	cw.NewGauge(metricNameToGenerateError).Set(123)
 	if err := cw.Send(); err != errTest {
 		t.Fatal("Expected error, but didn't get one")
+	}
+}
+
+func TestGaugeManyUniqueValues(t *testing.T) {
+	name := "many"
+	svc := newMockCloudWatch()
+	cw := New("abc", svc, WithLogger(log.NewNopLogger()))
+	gauge := cw.NewGauge(name)
+
+	n := 2*maxValuesInABatch + 1 // more unique values than fit in one datum
+	for i := 0; i < n; i++ {
+		gauge.Set(float64(i))
+	}
+	if err := cw.Send(); err != nil {
+		t.Fatal(err)
+	}
+
+	have := svc.valuesReceived[name]
+	sort.Float64s(have)
+	if want := n; len(have) != want {
+		t.Fatalf("want %d values, have %d", want, len(have))
+	}
+	for i, v := range have {
+		if v != float64(i) {
+			t.Fatalf("value %d: want %f, have %f", i, float64(i), v)
+		}
 	}
 }

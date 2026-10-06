@@ -175,12 +175,6 @@ func (cw *CloudWatch) Send() error {
 			return true
 		}
 
-		datum := &cloudwatch.MetricDatum{
-			MetricName: aws.String(name),
-			Dimensions: makeDimensions(lvs...),
-			Timestamp:  aws.Time(now),
-		}
-
 		// CloudWatch Put Metrics API (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDatum.html)
 		// expects batch of unique values including the array of corresponding counts
 		valuesCounter := make(map[float64]int)
@@ -188,15 +182,21 @@ func (cw *CloudWatch) Send() error {
 			valuesCounter[v]++
 		}
 
+		// A single datum holds at most maxValuesInABatch unique values, so
+		// spread the rest over additional datums rather than dropping them.
+		var datum *cloudwatch.MetricDatum
 		for value, count := range valuesCounter {
-			if len(datum.Values) == maxValuesInABatch {
-				break
+			if datum == nil || len(datum.Values) == maxValuesInABatch {
+				datum = &cloudwatch.MetricDatum{
+					MetricName: aws.String(name),
+					Dimensions: makeDimensions(lvs...),
+					Timestamp:  aws.Time(now),
+				}
+				datums = append(datums, datum)
 			}
 			datum.Values = append(datum.Values, aws.Float64(value))
 			datum.Counts = append(datum.Counts, aws.Float64(float64(count)))
 		}
-
-		datums = append(datums, datum)
 		return true
 	})
 

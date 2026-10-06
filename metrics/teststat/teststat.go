@@ -42,7 +42,7 @@ func FillCounter(counter metrics.Counter) float64 {
 // to check that the gauge has the correct final value.
 func TestGauge(gauge metrics.Gauge, value func() []float64) error {
 	a := rand.Perm(100)
-	n := rand.Intn(len(a))
+	n := 1 + rand.Intn(len(a)) // at least one value, so want is never empty
 
 	var want []float64
 	for i := 0; i < n; i++ {
