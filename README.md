@@ -1,31 +1,16 @@
 # Go kit
 
-![GitHub Workflow Status](https://github.com/go-kit/kit/workflows/CI/badge.svg)
-[![GoDev](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/go-kit/kit?tab=doc)
-[![codecov](https://codecov.io/gh/go-kit/kit/branch/master/graph/badge.svg)](https://codecov.io/gh/go-kit/kit)
-[![Go Report Card](https://goreportcard.com/badge/go-kit/kit)](https://goreportcard.com/report/go-kit/kit)
-[![Sourcegraph](https://sourcegraph.com/github.com/go-kit/kit/-/badge.svg)](https://sourcegraph.com/github.com/go-kit/kit?badge)
+[![CI](https://github.com/nkcmr/go-kit/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/nkcmr/go-kit/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/code.nkcmr.net/go-kit.svg)](https://pkg.go.dev/code.nkcmr.net/go-kit)
+
+> [!NOTE]
+> This is a fork of the original [`go-kit/kit`](https://github.com/go-kit/kit)
+> library that simply layers on generics and keeps dependencies up to date.
 
 **Go kit** is a **programming toolkit** for building microservices
 (or elegant monoliths) in Go. We solve common problems in distributed
 systems and application architecture so you can focus on delivering
 business value.
-
-- Website: [gokit.io](https://gokit.io)
-- Mailing list: [go-kit](https://groups.google.com/forum/#!forum/go-kit)
-- Slack: [gophers.slack.com](https://gophers.slack.com) **#go-kit** ([invite](https://gophersinvite.herokuapp.com/))
-
-## Sponsors
-
-<div>
-  <a href="https://encore.dev" style="display: inline-flex; align-items: center; gap: 10px">
-    <img src="https://user-images.githubusercontent.com/78424526/214602214-52e0483a-b5fc-4d4c-b03e-0b7b23e012df.svg" height="28px" alt="encore icon"></img>
-  <b>Encore – the platform for building Go-based cloud backends.</b>
-    </a>
-</div>
-<br/>
-
-Click [here](https://github.com/sponsors/peterbourgon) or Sponsor, above, for more information on sponsorship.
 
 ## Motivation
 
