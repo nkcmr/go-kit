@@ -1,8 +1,8 @@
 package provider
 
 import (
-	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/kit/metrics/influx"
+	"code.nkcmr.net/go-kit/metrics"
+	"code.nkcmr.net/go-kit/metrics/influx"
 )
 
 type influxProvider struct {

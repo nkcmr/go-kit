@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/go-kit/kit/endpoint"
-	ockit "github.com/go-kit/kit/tracing/opencensus"
-	grpctransport "github.com/go-kit/kit/transport/grpc"
+	"code.nkcmr.net/go-kit/endpoint"
+	ockit "code.nkcmr.net/go-kit/tracing/opencensus"
+	grpctransport "code.nkcmr.net/go-kit/transport/grpc"
 )
 
 type dummy struct{}

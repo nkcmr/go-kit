@@ -3,8 +3,8 @@ package lb
 import (
 	"sync/atomic"
 
-	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/kit/sd"
+	"code.nkcmr.net/go-kit/endpoint"
+	"code.nkcmr.net/go-kit/sd"
 )
 
 // NewRoundRobin returns a load balancer that returns services in sequence.

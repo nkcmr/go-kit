@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/kit/metrics/teststat"
+	"code.nkcmr.net/go-kit/metrics/teststat"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

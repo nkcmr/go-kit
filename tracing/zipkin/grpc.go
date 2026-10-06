@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	kitgrpc "github.com/go-kit/kit/transport/grpc"
+	kitgrpc "code.nkcmr.net/go-kit/transport/grpc"
 	"github.com/go-kit/log"
 )
 

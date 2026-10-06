@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/go-kit/kit/endpoint"
+	"code.nkcmr.net/go-kit/endpoint"
 )
 
 // Client wraps a gRPC connection and provides a method that implements

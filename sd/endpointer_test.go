@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/kit/sd"
-	"github.com/go-kit/kit/sd/internal/instance"
+	"code.nkcmr.net/go-kit/endpoint"
+	"code.nkcmr.net/go-kit/sd"
+	"code.nkcmr.net/go-kit/sd/internal/instance"
 	"github.com/go-kit/log"
 )
 

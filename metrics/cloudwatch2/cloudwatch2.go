@@ -13,9 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/kit/metrics/internal/convert"
-	"github.com/go-kit/kit/metrics/internal/lv"
+	"code.nkcmr.net/go-kit/metrics"
+	"code.nkcmr.net/go-kit/metrics/internal/convert"
+	"code.nkcmr.net/go-kit/metrics/internal/lv"
 	"github.com/go-kit/log"
 )
 

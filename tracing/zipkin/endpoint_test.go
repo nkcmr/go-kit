@@ -7,8 +7,8 @@ import (
 	"github.com/openzipkin/zipkin-go"
 	"github.com/openzipkin/zipkin-go/reporter/recorder"
 
-	"github.com/go-kit/kit/endpoint"
-	zipkinkit "github.com/go-kit/kit/tracing/zipkin"
+	"code.nkcmr.net/go-kit/endpoint"
+	zipkinkit "code.nkcmr.net/go-kit/tracing/zipkin"
 )
 
 const spanName = "test"

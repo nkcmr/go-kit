@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"code.nkcmr.net/go-kit/transport/http/jsonrpc"
 )
 
 type TestResponse struct {

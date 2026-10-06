@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/kit/transport"
+	"code.nkcmr.net/go-kit/endpoint"
+	"code.nkcmr.net/go-kit/transport"
 	"github.com/go-kit/log"
 )
 

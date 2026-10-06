@@ -9,7 +9,7 @@ import (
 	"github.com/openzipkin/zipkin-go/model"
 	"github.com/openzipkin/zipkin-go/propagation/b3"
 
-	kithttp "github.com/go-kit/kit/transport/http"
+	kithttp "code.nkcmr.net/go-kit/transport/http"
 	"github.com/go-kit/log"
 )
 

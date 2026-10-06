@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/endpoint"
+	"code.nkcmr.net/go-kit/endpoint"
 )
 
 func testFailingEndpoint(

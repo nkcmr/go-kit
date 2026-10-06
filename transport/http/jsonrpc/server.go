@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	httptransport "github.com/go-kit/kit/transport/http"
+	httptransport "code.nkcmr.net/go-kit/transport/http"
 	"github.com/go-kit/log"
 )
 

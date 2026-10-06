@@ -3,7 +3,7 @@ package dogstatsd
 import (
 	"testing"
 
-	"github.com/go-kit/kit/metrics/teststat"
+	"code.nkcmr.net/go-kit/metrics/teststat"
 	"github.com/go-kit/log"
 )
 

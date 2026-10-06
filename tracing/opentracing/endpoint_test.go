@@ -13,10 +13,10 @@ import (
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/opentracing/opentracing-go/mocktracer"
 
-	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/kit/sd"
-	"github.com/go-kit/kit/sd/lb"
-	kitot "github.com/go-kit/kit/tracing/opentracing"
+	"code.nkcmr.net/go-kit/endpoint"
+	"code.nkcmr.net/go-kit/sd"
+	"code.nkcmr.net/go-kit/sd/lb"
+	kitot "code.nkcmr.net/go-kit/tracing/opentracing"
 )
 
 const (

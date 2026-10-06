@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"sync/atomic"
 
-	"github.com/go-kit/kit/endpoint"
-	httptransport "github.com/go-kit/kit/transport/http"
+	"code.nkcmr.net/go-kit/endpoint"
+	httptransport "code.nkcmr.net/go-kit/transport/http"
 )
 
 // Client wraps a JSON RPC method and provides a method that implements endpoint.Endpoint.

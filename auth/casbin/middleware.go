@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"code.nkcmr.net/go-kit/endpoint"
 	stdcasbin "github.com/casbin/casbin/v2"
-	"github.com/go-kit/kit/endpoint"
 )
 
 type contextKey string

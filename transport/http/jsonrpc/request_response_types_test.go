@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"code.nkcmr.net/go-kit/transport/http/jsonrpc"
 )
 
 func TestCanUnMarshalID(t *testing.T) {

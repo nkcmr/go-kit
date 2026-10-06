@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	httptransport "github.com/go-kit/kit/transport/http"
+	httptransport "code.nkcmr.net/go-kit/transport/http"
 	"google.golang.org/protobuf/proto"
 )
 

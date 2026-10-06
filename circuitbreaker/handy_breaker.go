@@ -6,7 +6,7 @@ import (
 
 	"github.com/streadway/handy/breaker"
 
-	"github.com/go-kit/kit/endpoint"
+	"code.nkcmr.net/go-kit/endpoint"
 )
 
 // HandyBreaker returns an endpoint.Middleware that implements the circuit

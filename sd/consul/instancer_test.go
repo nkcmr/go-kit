@@ -9,7 +9,7 @@ import (
 
 	consul "github.com/hashicorp/consul/api"
 
-	"github.com/go-kit/kit/sd"
+	"code.nkcmr.net/go-kit/sd"
 	"github.com/go-kit/log"
 )
 

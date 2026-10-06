@@ -1,4 +1,4 @@
-module github.com/go-kit/kit
+module code.nkcmr.net/go-kit
 
 go 1.17
 

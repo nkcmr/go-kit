@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/endpoint"
-	httptransport "github.com/go-kit/kit/transport/http"
+	"code.nkcmr.net/go-kit/endpoint"
+	httptransport "code.nkcmr.net/go-kit/transport/http"
 )
 
 func TestServerBadDecode(t *testing.T) {

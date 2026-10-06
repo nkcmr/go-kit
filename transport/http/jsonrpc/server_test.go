@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"code.nkcmr.net/go-kit/endpoint"
+	"code.nkcmr.net/go-kit/transport/http/jsonrpc"
 )
 
 func addBody() io.Reader {

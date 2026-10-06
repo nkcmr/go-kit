@@ -10,7 +10,7 @@ import (
 
 	influxdb "github.com/influxdata/influxdb1-client/v2"
 
-	"github.com/go-kit/kit/metrics/teststat"
+	"code.nkcmr.net/go-kit/metrics/teststat"
 	"github.com/go-kit/log"
 )
 

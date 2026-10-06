@@ -1,8 +1,8 @@
 package zap_test
 
 import (
+	kitzap "code.nkcmr.net/go-kit/log/zap"
 	"encoding/json"
-	kitzap "github.com/go-kit/kit/log/zap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strings"

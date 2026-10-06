@@ -5,7 +5,7 @@ import (
 
 	handybreaker "github.com/streadway/handy/breaker"
 
-	"github.com/go-kit/kit/circuitbreaker"
+	"code.nkcmr.net/go-kit/circuitbreaker"
 )
 
 func TestHandyBreaker(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/sony/gobreaker"
 
-	"github.com/go-kit/kit/circuitbreaker"
+	"code.nkcmr.net/go-kit/circuitbreaker"
 )
 
 func TestGobreaker(t *testing.T) {
